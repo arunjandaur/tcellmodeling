@@ -1,0 +1,138 @@
+from __future__ import division
+
+from scipy.stats import truncnorm
+
+import random
+import numpy as np
+import pandas as pd
+import matplotlib as mpl
+import seaborn as sns
+
+def sample(dists):
+    #Uniformly sample from each distribution in dists
+    params = []
+    tnorm_l1 = truncnorm(a=dists[0][0], b=dists[0][1], loc=dists[0][2], scale=dists[0][3]**.5)
+    tnorm_l2 = truncnorm(a=dists[1][0], b=dists[1][1], loc=dists[1][2], scale=dists[1][3]**.5)
+    for i in range(len(dists)):
+        distribution = dists[i]
+        if len(distribution) == 2:
+            left, right = distribution
+            if i == 2 and dists[2][1] > params[0]:
+                right = params[0]
+            if i == 3 and dists[3][1] > params[1]:
+                right = params[1]
+            param = random.uniform(left, right)
+        elif len(distribution) == 4:
+            if i==0:
+                param = tnorm_l1.rvs(size=1)
+            if i==1:
+                param = tnorm_l2.rvs(size=1)
+        params.append(param)
+    return params
+
+def simulate_data(params, domain):
+    m_data, int_data, eff_data = [], [], []
+
+    #k1 = 1.05*10**6
+    #k2 = 4.60*10**5
+    l1, l2, xi1, xi2, mu3, k1, k2 = params
+    m_cells_eq = k1 * (l1 - xi1) / l1
+    int_cells_eq = k2 / (2*l2) * ((l2-xi2) + ((l2-xi2)**2 + 4*xi1*l2*m_cells_eq / k2)**.5)
+    eff_cells_eq = xi2 * int_cells_eq / mu3
+
+    for t in domain:
+        m_data_pt = m_cells_eq
+        int_data_pt = int_cells_eq
+        eff_data_pt = eff_cells_eq
+        m_data.append(m_data_pt)
+        int_data.append(eff_data_pt)
+        eff_data.append(int_data_pt)
+    return m_data + int_data + eff_data
+
+def distance(observed, simulated):
+    accum = 0.0
+    for i in range(len(observed)):
+        diff = observed[i] - simulated[i]
+        accum += (diff**2) / (observed[i]**2)
+    return accum
+
+def query_params(query, param_sets, i=0):
+    if query == []:
+        return param_sets
+    
+    filtered_param_sets = []
+    left, right = query[0]
+    for params in param_sets:
+        if params[i] <= right and params[i] >= left:
+            filtered_param_sets.append(params)
+    return query_params(query[1:], filtered_param_sets, i+1)
+
+def query_prob(query, param_sets):
+    return len(query_params(query, param_sets)) / len(param_sets)
+
+def inference(observed_data, dists, domain, threshold, num_samples):
+    accepted_param_sets = []
+    argmin = 0
+    minval = threshold + 1
+    for _ in range(num_samples):
+        params = sample(dists)
+        simulated_data = simulate_data(params, domain)
+        closeness = distance(observed_data, simulated_data)
+        if closeness < threshold:
+            accepted_param_sets.append(params)
+            if closeness < minval:
+                argmin = params
+                minval = closeness
+    return accepted_param_sets, argmin
+
+def vis_data(param_sets):
+    data = np.array(param_sets)
+    #print data[:, [2, 3]]
+    data = pd.DataFrame(data[:, [1, 2]], columns=["X", "Y"])
+    sns.kdeplot(data.X, data.Y, shade=True)
+    mpl.pyplot.show()
+
+if __name__ == "__main__":
+    fname = "spleen_data" #str(input("Please enter the complete file name of the observed data (please refer to readme for required format of input data): "))
+    observed_data = []
+    dists = []
+    domain = []
+    threshold = 30 #float(input("Please enter the error threshold (type 30 to use default): "))
+    num_samples = 300000 #int(input("Please enter the number of samples (type 10000 to use default): "))
+
+    #param_names = ['lambda1', 'lambda2', 'xi1', 'xi2', 'mu3', 'kappa1', 'kappa2']
+    """
+    for name in param_names:
+        left = input("Please enter the left boundary of parameter " + name + ": ")
+        right = input("Please enter the right boundary of parameter " + name + ": ")
+        #initial = float(input("Please enter an initial guess (or 0, if no guess) of parameter " + name + ": "))
+        dists.append([left, right])
+        #dists.append([left, right, initial])
+    """
+    dists = [[.0001, 4, .15, 1], [.0001, 4, .45, 1], [0, 4], [0, 4], [0, .1], [0, 10**7], [0, 10**7]]
+
+    l1_l, l1_r = dists[0][0], dists[0][1]
+    l2_l, l2_r = dists[1][0], dists[1][1]
+    xi1_l, xi1_r = dists[2]
+    xi2_l, x21_r = dists[3]
+
+    if xi1_l >= l1_l:
+        print "xi1's left boundary needs to be earlier than lambda1's left boundary"
+    if xi2_l >= l2_l:
+        print "xi2's left boundary needs to be earlier than lambda2's left boundary"
+
+    fobj = open(fname)
+    x1_s, x2_s, x3_s = [], [], []
+    for line in iter(fobj.readline, ''):
+        line = line.split(' ')
+        t, x1, x2, x3 = map(float, line)
+        domain.append(t)
+        x1_s.append(x1)
+        x2_s.append(x2)
+        x3_s.append(x3)
+    
+    observed_data = x1_s + x2_s + x3_s
+    param_sets, argmin = inference(observed_data, dists, domain, threshold, num_samples)
+    #print argmin
+
+    vis_data(param_sets)
