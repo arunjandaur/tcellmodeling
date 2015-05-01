@@ -1,6 +1,7 @@
 from __future__ import division
 
 from scipy.stats import truncnorm
+from scipy import integrate
 
 import random
 import numpy as np
@@ -26,16 +27,26 @@ def sample(dists):
             param = random.uniform(left, right)
         elif len(distribution) == 4:
             if i==0:
-                param = tnorm_l1.rvs(size=1)
+                param = tnorm_l1.rvs(size=1)[0]
             if i==1:
-                param = tnorm_l2.rvs(size=1)
+                param = tnorm_l2.rvs(size=1)[0]
         params.append(param)
     return params
 
-def simulate_data(params, domain):
-    m_data, int_data, eff_data = [], [], []
-
+def dX_dt(X, t, *params):
     l1, l2, xi1, xi2, mu3, k1, k2 = params
+    x1 = l1*X[0]*(1.0-X[0]/k1) - xi1*X[0]
+    x2 = l2*X[1]*(1.0-X[1]/k2) - xi2*X[1] + xi1*X[0]
+    x3 = -mu3*X[2] + xi2*X[1]
+    return np.array([x1, x2, x3])
+
+def simulate_data(params, domain):
+    X0 = np.array([100000.0, 0.0, 0.0])
+    X, infodict = integrate.odeint(dX_dt, X0, domain, args=tuple(params), full_output=True)
+    x1, x2, x3 = X.T
+    return np.hstack((x1, x2, x3))
+
+    """
     m_cells_eq = k1 * (l1 - xi1) / l1
     int_cells_eq = k2 / (2*l2) * ((l2-xi2) + ((l2-xi2)**2 + 4*xi1*l2*m_cells_eq / k2)**.5)
     eff_cells_eq = xi2 * int_cells_eq / mu3
@@ -48,6 +59,7 @@ def simulate_data(params, domain):
         int_data.append(int_data_pt)
         eff_data.append(eff_data_pt)
     return m_data + int_data + eff_data
+    """
 
 def distance(observed, simulated):
     accum = 0.0
@@ -86,6 +98,7 @@ def inference(observed_data, dists, domain, threshold, num_samples):
     return accepted_param_sets, argmin
 
 def vis_data(param_sets):
+    #print param_sets
     data = np.array(param_sets)
     print data[:, [1, 2]]
     data = pd.DataFrame(data[:, [1, 2]], columns=["X", "Y"])
@@ -93,12 +106,12 @@ def vis_data(param_sets):
     mpl.pyplot.show()
 
 if __name__ == "__main__":
-    fname = "spleen_data" #str(input("Please enter the complete file name of the observed data (please refer to readme for required format of input data): "))
+    fname = "spleen_data_edit" #str(input("Please enter the complete file name of the observed data (please refer to readme for required format of input data): "))
     observed_data = []
     dists = []
     domain = []
     threshold = 30 #float(input("Please enter the error threshold (type 30 to use default): "))
-    num_samples = 300000 #int(input("Please enter the number of samples (type 10000 to use default): "))
+    num_samples = 10000 #int(input("Please enter the number of samples (type 10000 to use default): "))
 
     param_names = ['lambda1', 'lambda2', 'xi1', 'xi2', 'mu3', 'kappa1', 'kappa2']
     """
