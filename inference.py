@@ -106,7 +106,7 @@ def vis_data(param_sets):
     mpl.pyplot.show()
 
 if __name__ == "__main__":
-    fname = "spleen_data_edit" #str(input("Please enter the complete file name of the observed data (please refer to readme for required format of input data): "))
+    fname = "data/spleen_data_partial" #str(input("Please enter the complete file name of the observed data (please refer to readme for required format of input data): "))
     observed_data = []
     dists = []
     domain = []
