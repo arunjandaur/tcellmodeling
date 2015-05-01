@@ -8,6 +8,8 @@ import pandas as pd
 import matplotlib as mpl
 import seaborn as sns
 
+np.set_printoptions(threshold=np.nan)
+
 def sample(dists):
     #Uniformly sample from each distribution in dists
     params = []
@@ -17,10 +19,10 @@ def sample(dists):
         distribution = dists[i]
         if len(distribution) == 2:
             left, right = distribution
-            if i == 2 and dists[2][1] > params[0]:
-                right = params[0]
-            if i == 3 and dists[3][1] > params[1]:
-                right = params[1]
+            #if i == 2 and dists[2][1] > params[0]:
+                #right = params[0]
+            #if i == 3 and dists[3][1] > params[1]:
+                #right = params[1]
             param = random.uniform(left, right)
         elif len(distribution) == 4:
             if i==0:
@@ -33,8 +35,6 @@ def sample(dists):
 def simulate_data(params, domain):
     m_data, int_data, eff_data = [], [], []
 
-    #k1 = 1.05*10**6
-    #k2 = 4.60*10**5
     l1, l2, xi1, xi2, mu3, k1, k2 = params
     m_cells_eq = k1 * (l1 - xi1) / l1
     int_cells_eq = k2 / (2*l2) * ((l2-xi2) + ((l2-xi2)**2 + 4*xi1*l2*m_cells_eq / k2)**.5)
@@ -45,8 +45,8 @@ def simulate_data(params, domain):
         int_data_pt = int_cells_eq
         eff_data_pt = eff_cells_eq
         m_data.append(m_data_pt)
-        int_data.append(eff_data_pt)
-        eff_data.append(int_data_pt)
+        int_data.append(int_data_pt)
+        eff_data.append(eff_data_pt)
     return m_data + int_data + eff_data
 
 def distance(observed, simulated):
@@ -87,7 +87,7 @@ def inference(observed_data, dists, domain, threshold, num_samples):
 
 def vis_data(param_sets):
     data = np.array(param_sets)
-    #print data[:, [2, 3]]
+    print data[:, [1, 2]]
     data = pd.DataFrame(data[:, [1, 2]], columns=["X", "Y"])
     sns.kdeplot(data.X, data.Y, shade=True)
     mpl.pyplot.show()
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     threshold = 30 #float(input("Please enter the error threshold (type 30 to use default): "))
     num_samples = 300000 #int(input("Please enter the number of samples (type 10000 to use default): "))
 
-    #param_names = ['lambda1', 'lambda2', 'xi1', 'xi2', 'mu3', 'kappa1', 'kappa2']
+    param_names = ['lambda1', 'lambda2', 'xi1', 'xi2', 'mu3', 'kappa1', 'kappa2']
     """
     for name in param_names:
         left = input("Please enter the left boundary of parameter " + name + ": ")
@@ -109,7 +109,7 @@ if __name__ == "__main__":
         dists.append([left, right])
         #dists.append([left, right, initial])
     """
-    dists = [[.0001, 4, .15, 1], [.0001, 4, .45, 1], [0, 4], [0, 4], [0, .1], [0, 10**7], [0, 10**7]]
+    dists = [[.0001, 14, .15, 1], [.0001, 14, .45, 1], [0, 4], [0, 4], [0, .1], [0, 10**7], [0, 10**7]]
 
     l1_l, l1_r = dists[0][0], dists[0][1]
     l2_l, l2_r = dists[1][0], dists[1][1]
