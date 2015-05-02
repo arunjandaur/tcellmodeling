@@ -12,7 +12,6 @@ import seaborn as sns
 np.set_printoptions(threshold=np.nan)
 
 def sample(dists):
-    #Uniformly sample from each distribution in dists
     params = []
     tnorm_l1 = truncnorm(a=dists[0][0], b=dists[0][1], loc=dists[0][2], scale=dists[0][3]**.5)
     tnorm_l2 = truncnorm(a=dists[1][0], b=dists[1][1], loc=dists[1][2], scale=dists[1][3]**.5)
@@ -20,10 +19,6 @@ def sample(dists):
         distribution = dists[i]
         if len(distribution) == 2:
             left, right = distribution
-            #if i == 2 and dists[2][1] > params[0]:
-                #right = params[0]
-            #if i == 3 and dists[3][1] > params[1]:
-                #right = params[1]
             param = random.uniform(left, right)
         elif len(distribution) == 4:
             if i==0:
@@ -45,21 +40,6 @@ def simulate_data(params, domain):
     X, infodict = integrate.odeint(dX_dt, X0, domain, args=tuple(params), full_output=True)
     x1, x2, x3 = X.T
     return np.hstack((x1, x2, x3))
-
-    """
-    m_cells_eq = k1 * (l1 - xi1) / l1
-    int_cells_eq = k2 / (2*l2) * ((l2-xi2) + ((l2-xi2)**2 + 4*xi1*l2*m_cells_eq / k2)**.5)
-    eff_cells_eq = xi2 * int_cells_eq / mu3
-
-    for t in domain:
-        m_data_pt = m_cells_eq
-        int_data_pt = int_cells_eq
-        eff_data_pt = eff_cells_eq
-        m_data.append(m_data_pt)
-        int_data.append(int_data_pt)
-        eff_data.append(eff_data_pt)
-    return m_data + int_data + eff_data
-    """
 
 def distance(observed, simulated):
     accum = 0.0
@@ -98,14 +78,14 @@ def inference(observed_data, dists, domain, threshold, num_samples):
     return accepted_param_sets, argmin
 
 def vis_data(param_sets):
-    #print param_sets
     data = np.array(param_sets)
     print data[:, [1, 2]]
+    print len(data[:, [1, 2]])
     data = pd.DataFrame(data[:, [1, 2]], columns=["X", "Y"])
     sns.kdeplot(data.X, data.Y, shade=True)
     mpl.pyplot.show()
 
-if __name__ == "__main__":
+def infer_from_experiment():
     fname = "data/spleen_data_partial" #str(input("Please enter the complete file name of the observed data (please refer to readme for required format of input data): "))
     observed_data = []
     dists = []
@@ -146,6 +126,8 @@ if __name__ == "__main__":
     
     observed_data = x1_s + x2_s + x3_s
     param_sets, argmin = inference(observed_data, dists, domain, threshold, num_samples)
-    #print argmin
 
     vis_data(param_sets)
+
+if __name__ == '__main__':
+    infer_from_experiment()
