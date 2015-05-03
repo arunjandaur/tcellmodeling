@@ -29,16 +29,19 @@ def sample(dists):
     return params
 
 def dX_dt(X, t, *params):
-    l1, l2, xi1, xi2, mu3, k1, k2 = params
-    x1 = l1*X[0]*(1.0-X[0]/k1) - xi1*X[0]
-    x2 = l2*X[1]*(1.0-X[1]/k2) - xi2*X[1] + xi1*X[0]
-    x3 = -mu3*X[2] + xi2*X[1]
-    return np.array([x1, x2, x3])
+    l1, l2, xi1, gam, mu3, k1, k2, al, bet = params
+    mem, intr, eff, ant = X
+
+    dx1_dt = l1 * mem * (1.0 - mem / k1) - xi1 * mem
+    dx2_dt = l2 * intr * (1.0 - intr / k2) - gam * ant * intr + xi1 * mem
+    dx3_dt = -mu3 * eff + gam * ant * intr
+    da_dt = al * ant - bet * eff
+    return np.array([dx1_dt, dx2_dt, dx3_dt, da_dt])
 
 def simulate_data(params, domain):
-    X0 = np.array([100000.0, 0.0, 0.0])
+    X0 = np.array([100000.0, 0.0, 0.0, 0.0])
     X, infodict = integrate.odeint(dX_dt, X0, domain, args=tuple(params), full_output=True)
-    x1, x2, x3 = X.T
+    x1, x2, x3, a = X.T
     return np.hstack((x1, x2, x3))
 
 def distance(observed, simulated):
@@ -85,6 +88,14 @@ def vis_data(param_sets):
     sns.kdeplot(data.X, data.Y, shade=True)
     mpl.pyplot.show()
 
+def posteriors_to_data(posts, domain, num_samples):
+    data = []
+    for _ in range(num_samples):
+        params = sample(posts)
+        simulated_data = simulate_data(params, domain)
+        data.append(simulated_data)
+    return data
+
 def infer_from_experiment():
     fname = "data/spleen_data_partial" #str(input("Please enter the complete file name of the observed data (please refer to readme for required format of input data): "))
     observed_data = []
@@ -93,7 +104,7 @@ def infer_from_experiment():
     threshold = 30 #float(input("Please enter the error threshold (type 30 to use default): "))
     num_samples = 10000 #int(input("Please enter the number of samples (type 10000 to use default): "))
 
-    param_names = ['lambda1', 'lambda2', 'xi1', 'xi2', 'mu3', 'kappa1', 'kappa2']
+    param_names = ['lambda1', 'lambda2', 'xi1', 'gamma', 'mu3', 'kappa1', 'kappa2', 'alpha', 'beta']
     """
     for name in param_names:
         left = input("Please enter the left boundary of parameter " + name + ": ")
@@ -128,6 +139,3 @@ def infer_from_experiment():
     param_sets, argmin = inference(observed_data, dists, domain, threshold, num_samples)
 
     vis_data(param_sets)
-
-if __name__ == '__main__':
-    infer_from_experiment()
