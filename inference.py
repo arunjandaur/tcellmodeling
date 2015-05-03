@@ -39,7 +39,7 @@ def dX_dt(X, t, *params):
     return np.array([dx1_dt, dx2_dt, dx3_dt, da_dt])
 
 def simulate_data(params, domain):
-    X0 = np.array([100000.0, 0.0, 0.0, 0.0])
+    X0 = np.array([100000.0, 0.0, 0.0, 100000.0])
     X, infodict = integrate.odeint(dX_dt, X0, domain, args=tuple(params), full_output=True)
     x1, x2, x3, a = X.T
     return np.hstack((x1, x2, x3))
@@ -82,9 +82,9 @@ def inference(observed_data, dists, domain, threshold, num_samples):
 
 def vis_data(param_sets):
     data = np.array(param_sets)
-    print data[:, [1, 2]]
-    print len(data[:, [1, 2]])
-    data = pd.DataFrame(data[:, [1, 2]], columns=["X", "Y"])
+    print data[:, [0, 1]]
+    print len(data[:, [0, 1]])
+    data = pd.DataFrame(data[:, [0, 1]], columns=["X", "Y"])
     sns.kdeplot(data.X, data.Y, shade=True)
     mpl.pyplot.show()
 
@@ -102,7 +102,7 @@ def infer_from_experiment():
     dists = []
     domain = []
     threshold = 30 #float(input("Please enter the error threshold (type 30 to use default): "))
-    num_samples = 10000 #int(input("Please enter the number of samples (type 10000 to use default): "))
+    num_samples = 3000 #int(input("Please enter the number of samples (type 10000 to use default): "))
 
     param_names = ['lambda1', 'lambda2', 'xi1', 'gamma', 'mu3', 'kappa1', 'kappa2', 'alpha', 'beta']
     """
@@ -113,7 +113,7 @@ def infer_from_experiment():
         dists.append([left, right])
         #dists.append([left, right, initial])
     """
-    dists = [[.0001, 14, .15, 1], [.0001, 14, .45, 1], [0, 4], [0, 4], [0, .1], [0, 10**7], [0, 10**7]]
+    dists = [[.0001, 14, .15, 1], [.0001, 14, .45, 1], [0, 4], [0, 4], [0, .1], [0, 10**7], [0, 10**7], [0, 5], [0, 5]]
 
     l1_l, l1_r = dists[0][0], dists[0][1]
     l2_l, l2_r = dists[1][0], dists[1][1]
@@ -139,3 +139,6 @@ def infer_from_experiment():
     param_sets, argmin = inference(observed_data, dists, domain, threshold, num_samples)
 
     vis_data(param_sets)
+
+if __name__ == '__main__':
+    infer_from_experiment()
